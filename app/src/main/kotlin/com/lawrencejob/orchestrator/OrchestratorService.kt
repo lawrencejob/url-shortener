@@ -4,7 +4,7 @@ import com.lawrencejob.api.*
 import com.lawrencejob.persistence.*
 import com.lawrencejob.service.*
 
-class UrlShortenerService(
+class OrchestratorService(
     private val aliasGenerator: AliasGeneratorService,
     private val urlFilter: UrlFilterService,
     private val redisService: RedisService,
@@ -29,27 +29,32 @@ class UrlShortenerService(
         val shortAlias = request.customAlias ?: aliasGenerator.generateAlias()
 
         // try to write, handle possible outcomes
-        when (val writeResult = redisService.writeIfNotExists(shortAlias, request.fullUrl)) {
-            is WriteResult.Success -> {
-                return ShortenUrlResponse(shortAlias)
-            }
+        return when (val writeResult = redisService.writeAliasIfNotExists(shortAlias, request.fullUrl)) {
+            is WriteResult.Success -> ShortenUrlResponse(shortAlias)
             is WriteResult.ExistsAlready -> {
                 throw IllegalArgumentException("Alias already exists") // todo - change this exception type
             }
-            is WriteResult.Error -> {
-                throw writeResult.cause
-            }
+            is WriteResult.Error -> throw writeResult.cause
         }
     }
 
     suspend fun resolveAlias(alias: String): String {
-        // TODO: Lookup alias and return the original full URL or throw if missing
-        throw NotImplementedError("Alias resolution logic not implemented yet.")
+        // try to read from Redis
+        val readResult = redisService.readAlias(alias)
+        return when (readResult) {
+            is ReadResult.Found -> readResult.value
+            is ReadResult.NotFound -> throw NoSuchElementException("Alias not found") 
+            is ReadResult.Error -> throw readResult.cause
+        }
     }
 
     suspend fun deleteAlias(alias: String): Boolean {
-        // TODO: Delete alias and return true when deletion succeeds
-        throw NotImplementedError("Alias deletion logic not implemented yet.")
+        val deleted = redisService.deleteAlias(alias)
+        return when (deleted) {
+            is DeleteResult.Deleted -> true
+            is DeleteResult.NotFound -> false
+            is DeleteResult.Error -> throw deleted.cause
+        }
     }
 
     suspend fun listUrls(): List<UrlItem> {

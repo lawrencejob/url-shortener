@@ -17,16 +17,19 @@ sealed class ReadResult {
     data class Error(val cause: Throwable) : ReadResult()
 }
 
+sealed class DeleteResult {
+    object Deleted : DeleteResult()
+    object NotFound : DeleteResult()
+    data class Error(val cause: Throwable) : DeleteResult()
+}
+
 class RedisService(
     private val redis: RedisAsyncCommands<String, String>
 ) {
-    /**
-     * Suspends while writing to Redis with NX (only if not exists).
-     * Returns Success, ExistsAlready, or Error.
-     */
-    suspend fun writeIfNotExists(key: String, value: String): WriteResult {
+
+    suspend fun writeAliasIfNotExists(key: String, value: String): WriteResult {
         return try {
-            val result = redis.set(key, value, SetArgs().nx()).await()
+            val result = redis.set("alias:$key", value, SetArgs().nx()).await()
             when (result) {
                 "OK" -> WriteResult.Success
                 null  -> WriteResult.ExistsAlready
@@ -37,15 +40,28 @@ class RedisService(
         }
     }
 
-    suspend fun read(key: String): ReadResult {
+    suspend fun readAlias(key: String): ReadResult {
         return try {
-            val value = redis.get(key).await()
+            val value = redis.get("alias:$key").await()
             when (value) {
                 null -> ReadResult.NotFound
                 else -> ReadResult.Found(value)
             }
         } catch (ex: RedisException) {
             ReadResult.Error(ex)
+        }
+    }
+
+    suspend fun deleteAlias(key: String): DeleteResult {
+        return try {
+            val deletedCount = redis.del("alias:$key").await()
+            if (deletedCount > 0) {
+                DeleteResult.Deleted
+            } else {
+                DeleteResult.NotFound
+            }
+        } catch (ex: RedisException) {
+            DeleteResult.Error(ex)
         }
     }
 }
