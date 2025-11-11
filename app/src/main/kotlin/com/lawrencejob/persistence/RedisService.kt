@@ -4,6 +4,8 @@ import io.lettuce.core.api.async.RedisAsyncCommands
 import io.lettuce.core.RedisException
 import io.lettuce.core.SetArgs
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.flow.flow
+
 
 sealed class WriteResult {
     object Success : WriteResult()
@@ -62,6 +64,16 @@ class RedisService(
             }
         } catch (ex: RedisException) {
             DeleteResult.Error(ex)
+        }
+    }
+
+    fun listAllAliasesFlow() = flow {
+        val keys = redis.keys("alias:*").await()
+        for (key in keys) {
+            val value = redis.get(key).await()
+            if (value != null) {
+                emit(key.removePrefix("alias:") to value)
+            }
         }
     }
 }

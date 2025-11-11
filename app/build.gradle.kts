@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.2.21"
+    kotlin("plugin.serialization") version "2.2.21"
     id("io.ktor.plugin") version "3.3.2"
     application
 }
@@ -11,7 +12,7 @@ repositories {
 group = "com.lawrencejob"
 version = "0.0.1"
 
-val koin_version = "4.0.0"
+val koin_version = "4.1.1"
 
 kotlin {
     jvmToolchain(21)
@@ -38,6 +39,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.10.2")
 
     implementation("io.viascom.nanoid:nanoid:1.0.1")
+
+    implementation("com.typesafe:config:1.4.2")
+    implementation("org.yaml:snakeyaml:2.2") // make it possible to read YAML config files (wow)
 
     testImplementation(kotlin("test"))
 }

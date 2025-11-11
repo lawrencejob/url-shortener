@@ -3,17 +3,24 @@ package com.lawrencejob.orchestrator
 import com.lawrencejob.api.*
 import com.lawrencejob.persistence.*
 import com.lawrencejob.service.*
+import io.ktor.server.plugins.NotFoundException
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.config.*
+
+import kotlinx.coroutines.flow.map
+
 
 class OrchestratorService(
     private val aliasGenerator: AliasGeneratorService,
     private val urlFilter: UrlFilterService,
     private val redisService: RedisService,
+    private val appConfig: ApplicationConfig,
     ) {
     suspend fun createShortUrl(request: ShortenUrlRequest): ShortenUrlResponse {
 
         // check that the URL is allowed (e.g., not in a blocklist)
         if (urlFilter.isUrlAllowed(request.fullUrl) == false) {
-            throw IllegalArgumentException("URL is not allowed")
+            throw BadRequestException("URL is not allowed")
         }
 
         // if they have specified an alias:
@@ -21,16 +28,18 @@ class OrchestratorService(
             // check that the alias follows basic rules (e.g., length, characters)
             // todo
             if (request.customAlias.length < 4 || request.customAlias.length > 32) {
-                throw IllegalArgumentException("Custom alias must be between 4 and 32 characters")
+                throw BadRequestException("Custom alias must be between 4 and 32 characters")
             }
         }
 
         // if the alias is valid, use it; otherwise, generate one
         val shortAlias = request.customAlias ?: aliasGenerator.generateAlias()
+        
+        val basePath = appConfig.propertyOrNull("ktor.basePath")?.getString() ?: "http://localhost:8080"
 
         // try to write, handle possible outcomes
         return when (val writeResult = redisService.writeAliasIfNotExists(shortAlias, request.fullUrl)) {
-            is WriteResult.Success -> ShortenUrlResponse(shortAlias)
+            is WriteResult.Success -> ShortenUrlResponse("$basePath/$shortAlias")
             is WriteResult.ExistsAlready -> {
                 throw IllegalArgumentException("Alias already exists") // todo - change this exception type
             }
@@ -43,7 +52,7 @@ class OrchestratorService(
         val readResult = redisService.readAlias(alias)
         return when (readResult) {
             is ReadResult.Found -> readResult.value
-            is ReadResult.NotFound -> throw NoSuchElementException("Alias not found") 
+            is ReadResult.NotFound -> throw NotFoundException("Alias not found") 
             is ReadResult.Error -> throw readResult.cause
         }
     }
@@ -57,8 +66,15 @@ class OrchestratorService(
         }
     }
 
-    suspend fun listUrls(): List<UrlItem> {
-        // TODO: Return all stored URL mappings
-        throw NotImplementedError("List URLs logic not implemented yet.")
+    fun listUrlsFlow() = redisService
+    .listAllAliasesFlow()
+    .map { (alias, fullUrl) ->
+        val basePath = appConfig.propertyOrNull("ktor.basePath")?.getString()
+            ?: "http://localhost:8080"
+        UrlItem(
+            alias = alias,
+            fullUrl = fullUrl,
+            shortUrl = "$basePath/$alias"
+        )
     }
 }

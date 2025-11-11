@@ -10,6 +10,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import io.ktor.server.config.*
 import kotlinx.serialization.Serializable
 import org.koin.dsl.module
 import org.koin.ktor.ext.inject
@@ -27,6 +28,8 @@ import io.lettuce.core.RedisClient
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.async.RedisAsyncCommands
 
+import com.typesafe.config.ConfigFactory
+
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         module()
@@ -34,12 +37,15 @@ fun main() {
 }
 
 fun Application.module() {
+    log.info("Loaded config entries:")
+    environment.config.toMap().forEach { (k, v) -> log.info("$k = $v") }
+    val appConfig = environment.config
     
     val appModule = module {
-        single { OrchestratorService(get(), get(), get()) }
+        single<ApplicationConfig> { appConfig }
+        single { OrchestratorService(get(), get(), get(), get()) }
         single { UrlFilterService() }
         single { AliasGeneratorService() }
-        // todo - what did I forget
     }
 
     install(Koin) {
@@ -92,8 +98,17 @@ fun Application.module() {
         }
 
         get("/urls") {
-            val urls = orchestrator.listUrls()
-            call.respond(urls)
+            // use a text stream to avoid building the entire list in memory - not sure if idiomatic
+            call.respondTextWriter(contentType = ContentType.Application.Json) {
+                write("[")
+                var first = true
+                orchestrator.listUrlsFlow().collect { item ->
+                    if (!first) write(",") else first = false
+                    write("""{"alias":"${item.alias}","fullUrl":"${item.fullUrl}","shortUrl":"${item.shortUrl}"}""")
+                    flush()
+                }
+                write("]")
+            }
         }
     }
 }
