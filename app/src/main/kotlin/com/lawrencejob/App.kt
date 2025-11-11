@@ -11,24 +11,21 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import io.ktor.server.config.*
-import kotlinx.serialization.Serializable
 import org.koin.dsl.module
 import org.koin.ktor.ext.inject
 import org.koin.ktor.ext.getKoin
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
+import org.koin.core.module.Module
 
 import com.lawrencejob.orchestrator.*
 import com.lawrencejob.api.*
 import com.lawrencejob.service.*
-import com.lawrencejob.persistence.RedisService
+import com.lawrencejob.persistence.ShortUrlRepository
 import com.lawrencejob.plugins.redisModule
 
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.StatefulRedisConnection
-import io.lettuce.core.api.async.RedisAsyncCommands
-
-import com.typesafe.config.ConfigFactory
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
@@ -36,35 +33,47 @@ fun main() {
     }.start(wait = true)
 }
 
-fun Application.module() {
+fun Application.module(
+    includeRedisModule: Boolean = true,
+    additionalModules: List<Module> = emptyList(),
+) {
     log.info("Loaded config entries:")
     environment.config.toMap().forEach { (k, v) -> log.info("$k = $v") }
     val appConfig = environment.config
     
     val appModule = module {
         single<ApplicationConfig> { appConfig }
-        single { OrchestratorService(get(), get(), get(), get()) }
         single { UrlFilterService() }
         single { AliasGeneratorService() }
+        single { OrchestratorService(get(), get(), get<ShortUrlRepository>(), get()) }
     }
+
+    val moduleList = mutableListOf(appModule)
+    if (includeRedisModule) {
+        moduleList += redisModule(this@module)
+    }
+    moduleList += additionalModules
 
     install(Koin) {
         slf4jLogger()
-        modules(appModule, redisModule(this@module))
+        allowOverride(true)
+        modules(*moduleList.toTypedArray())
     }
 
     install(ContentNegotiation) {
         json()
     }
 
-    // this shuts down Redis - see redisModule.kt
-    // in ktor 4, this can move to the module's 'onStop'
-    monitor.subscribe(ApplicationStopped) {
-        val koin = getKoin()
-        val client = koin.get<RedisClient>()
-        val connection = koin.get<StatefulRedisConnection<String, String>>()
-        connection.close()
-        client.shutdown()
+    if (includeRedisModule) {
+        // this shuts down Redis - see redisModule.kt
+        // in ktor 4, this can move to the module's 'onStop'
+        monitor.subscribe(ApplicationStopped) {
+            val koin = getKoin()
+            val client = koin.get<RedisClient>()
+            val connection = koin.get<StatefulRedisConnection<String, String>>()
+            connection.close()
+            client.shutdown()
+        }
     }
 
     // --- Routes ---

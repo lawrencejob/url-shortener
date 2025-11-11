@@ -44,4 +44,5 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2") // make it possible to read YAML config files (wow)
 
     testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-server-test-host-jvm:3.3.2")
 }
