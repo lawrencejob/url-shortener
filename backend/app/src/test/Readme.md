@@ -1,0 +1,1 @@
+The test project is very limited because I could not get my IDE (VS Code) to understand the test package; I attempted to circumnavigate the issue with AI for a long time but had to give up. I hope I can demonstrate that I know _how_ to test in principle, even though I wasn't able to write too many. I would be happy to expand on this in the interview.
