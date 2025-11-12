@@ -32,7 +32,7 @@ export default function Form() {
     return (
         <form
             action={formAction}
-            className="space-y-6 max-w-md mx-auto p-6 rounded-2xl border bg-background"
+            className="space-y-6"
         >
             <Field>
                 <FieldLabel>URL to shorten</FieldLabel>

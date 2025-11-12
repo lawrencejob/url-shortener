@@ -44,8 +44,7 @@ type ShortenActionResult =
         message: string
     }
 
-export async function shortenAction(previousState: any, formData: FormData): Promise<ShortenActionResult> {
-    console.log("Action called with:", previousState, formData)
+export async function shortenAction(_: any, formData: FormData): Promise<ShortenActionResult> {
 
     const fields = {
         fullUrl: formData.get('fullUrl')?.toString() || '',
@@ -63,16 +62,24 @@ export async function shortenAction(previousState: any, formData: FormData): Pro
         }
     }
 
-    const result = await fetch(`${API_BASE_URL}/shorten`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            fullUrl: validatedFields.data.fullUrl,
-            customAlias: validatedFields.data.alias,
-        }),
-    })
+    var result = null
+    try {
+        result = await fetch(`${API_BASE_URL}/shorten`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                fullUrl: validatedFields.data.fullUrl,
+                customAlias: validatedFields.data.alias || undefined,
+            }),
+        })
+    } catch (e) {
+        return {
+            status: "error",
+            message: 'Failed to connect to the server. Please try again later.',
+        }
+    }
 
     if (result.ok && result.status === 201) {
         const { shortUrl } = await result.json()
