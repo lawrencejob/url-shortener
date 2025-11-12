@@ -2,6 +2,8 @@
 
 import { z } from 'zod'
 
+const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
+
 const schema = z.object({
     fullUrl: z
         .url()
@@ -61,7 +63,7 @@ export async function shortenAction(previousState: any, formData: FormData): Pro
         }
     }
 
-    const result = await fetch('http://localhost:8080/shorten', {
+    const result = await fetch(`${API_BASE_URL}/shorten`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

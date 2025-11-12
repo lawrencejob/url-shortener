@@ -6,9 +6,35 @@ This is a basic URL shortener, divided into frontend (Next.js) and backend (Kotl
 
 To run the backend locally, navigate to the backend directory and use `./gradlew run` or `./gradlew test`; it will run at http://localhost:8080.
 
-To run the frontend locally, navigate to the frontend directory and use `pnpm run dev`; it will run at http://localhost:3000
+To run the frontend locally, navigate to the frontend directory and use `pnpm run dev`; it will run at http://localhost:3000. Set `API_BASE_URL` if you need the frontend to talk to a backend that is not on `http://localhost:8080`.
 
-## Architecture
+### Docker
+
+You can containerise both services individually:
+
+```bash
+docker build -t url-shortener-backend ./backend
+docker run --rm -p 8080:8080 -e REDIS_URL=redis://host.docker.internal:6379 url-shortener-backend
+```
+
+```bash
+docker build -t url-shortener-frontend ./frontend
+docker run --rm -p 3000:3000 url-shortener-frontend
+```
+
+The backend expects Redis to be reachable at the value of `REDIS_URL` (defaults to `redis://localhost:6379`); adjust the hostname to match your environment or compose setup.
+
+### Docker Compose
+
+To launch the entire stack (frontend, backend, Redis, reverse proxy) run:
+
+```bash
+docker compose up --build
+```
+
+The proxy listens on port 80 and routes traffic to the Next.js and Ktor services according to the policy above. Environment variables are already wired so the backend points to the internal Redis instance and the frontend uses the backend’s internal hostname.
+
+# Architecture
 
 I designed the three system layers (frontend -> backend -> database) to scale horizontally and independently. I inferred that a URL shortener could be deployed at enormous scale, serving as the entrypoint to a company's systems. Hence, I looked for a K-V or point-read database rather than a traditional relational database.
 
@@ -35,10 +61,11 @@ location / {
 
 This is an extremely brittle approach and with more time, I would either:
 
-1) suggest to the client that they adjust their requirement that the two services are on the same host, or move the API to a directory like `/api/`
+1) suggest an alteration to the requirement such that the two services are on the same host, or move the API to a directory like `/api/`
 2) simplify the SPA to not need routing outside of an explicit set of assets (e.g. a react app without routing) -- possibly directly served by nginx, negating the maintenance overhead of validating that the reverse proxy policy matches the file structure of the SPA
 3) require short URLs to have a symbol differentiating them
 4) change the reverse proxy policy to attempt to load the SPA frontend and send failed routes to the API
+5) the embedded server in Ktor has a singlePageApp mode where the kotlin app can provide the routing itself without need for a reverse proxy
 
 ### ID Structure: NanoID x16
 
@@ -71,3 +98,11 @@ Being that there are five components to deploy, the system is quite agnostic to 
 In addition, the reverse proxy as specified above can be replaced by a first-party CDN+routing offering in the cloud provider.
 
 Whatever you use, I suggest that you use Terraform (IaC) and an OpenTelemetry collector (obervability). For instance, Azure Monitor + App Insights.
+
+## Drawbacks and further work
+
+With more time, there are a lot of enhancements I would like to provide; I have listed them as follows:
+
+### More unit test coverage
+
+I am very disappointed with the test coverage of the backend. This is my first time writing in Kotlin or even Java for a very long time, and I spend a significant amount of time (a working day) trying to get my IDE (VS Code) to work for JDK development. After that amount of time, I had managed to get basic syntax highlighting working for the main app, but the IDE made it almost impossible to write tests. I wrote as many tests as I could to prove that I understand how unit/integration tests work, but I am afraid that coverage is bad.

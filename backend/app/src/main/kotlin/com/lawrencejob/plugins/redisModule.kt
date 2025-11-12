@@ -15,9 +15,11 @@ import org.koin.ktor.ext.get
  */
 fun redisModule(application: Application) = module {
     single {
-        val redisUrl = application.environment.config
-            .propertyOrNull("ktor.redis.url")
-            ?.getString() ?: "redis://localhost:6379"
+        val redisUrl = System.getenv("REDIS_URL")
+            ?: application.environment.config
+                .propertyOrNull("ktor.redis.url")
+                ?.getString()
+            ?: "redis://localhost:6379"
         RedisClient.create(redisUrl)
     }
 
