@@ -38,8 +38,11 @@ class RedisService(
 ) : ShortUrlRepository {
 
     override suspend fun writeAliasIfNotExists(key: String, value: String): WriteResult {
+        if (!validateAlias(key)) {
+            return WriteResult.Error(IllegalArgumentException("Alias contains invalid characters"))
+        }
         return try {
-            val result = redis.set("alias:$key", value, SetArgs().nx()).await()
+            val result = redis.set("alias:{$key}", value, SetArgs().nx()).await()
             when (result) {
                 "OK" -> WriteResult.Success
                 null  -> WriteResult.ExistsAlready
@@ -51,8 +54,11 @@ class RedisService(
     }
 
     override suspend fun readAlias(key: String): ReadResult {
+        if (!validateAlias(key)) {
+            return ReadResult.Error(IllegalArgumentException("Alias contains invalid characters"))
+        }
         return try {
-            val value = redis.get("alias:$key").await()
+            val value = redis.get("alias:{$key}").await()
             when (value) {
                 null -> ReadResult.NotFound
                 else -> ReadResult.Found(value)
@@ -63,8 +69,11 @@ class RedisService(
     }
 
     override suspend fun deleteAlias(key: String): DeleteResult {
+        if (!validateAlias(key)) {
+            return DeleteResult.Error(IllegalArgumentException("Alias contains invalid characters"))
+        }
         return try {
-            val deletedCount = redis.del("alias:$key").await()
+            val deletedCount = redis.del("alias:{$key}").await()
             if (deletedCount > 0) {
                 DeleteResult.Deleted
             } else {
@@ -83,5 +92,11 @@ class RedisService(
                 emit(key.removePrefix("alias:") to value)
             }
         }
+    }
+
+    private fun validateAlias(alias: String): Boolean {
+        // only permit alphanumerics
+        val regex = "^[a-zA-Z0-9]+$".toRegex()
+        return regex.matches(alias)
     }
 }
