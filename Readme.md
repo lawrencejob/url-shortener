@@ -106,3 +106,11 @@ With more time, there are a lot of enhancements I would like to provide; I have 
 ### More unit test coverage
 
 I am very disappointed with the test coverage of the backend. This is my first time writing in Kotlin or even Java for a very long time, and I spend a significant amount of time (a working day) trying to get my IDE (VS Code) to work for JDK development. After that amount of time, I had managed to get basic syntax highlighting working for the main app, but the IDE made it almost impossible to write tests. I wrote as many tests as I could to prove that I understand how unit/integration tests work, but I am afraid that coverage is bad.
+
+### Frontend library choice
+
+After spending an extraordinary amount of time trying to learn a new language and fight my IDE, I made a conservative choice for the frontend and built it using Next.js because I'm very familiar with it. If I had more time, I would prefer to make it a simple React app without the extra features of Next.js. There's no need to use a backend for frontend in this architecture, and it added substantial complexity, not least because of the routing complexity in the reverse proxy, which currently uses a heuristic to decide where to route traffic.
+
+### Observability
+
+I am a huge advocate for OpenTelemetry and I would have loved to include it. My understanding is that it's trivial to add it to Ktor for collecting spans, so I decided it wasn't worth the time investment of adding instrumentation to the API.
