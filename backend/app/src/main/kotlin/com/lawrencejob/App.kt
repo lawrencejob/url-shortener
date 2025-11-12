@@ -76,32 +76,43 @@ fun Application.module(
         }
     }
 
-    // --- Routes ---
     routing {
         val orchestrator by inject<OrchestratorService>()
 
+        // helper to build error payloads
+        fun errorPayload(message: String) = mapOf("message" to message)
+
         post("/shorten") {
             val request = call.receive<ShortenUrlRequest>()
-            val result = orchestrator.createShortUrl(request)
-            call.respond(HttpStatusCode.Created, result)
+            when (val result = orchestrator.createShortUrl(request)) {
+                is CreateShortUrlResult.Created ->
+                    call.respond(HttpStatusCode.Created, result.response)
+                is CreateShortUrlResult.AliasUnavailable ->
+                    call.respond(HttpStatusCode.Conflict, errorPayload("Alias '${result.alias}' already exists"))
+                is CreateShortUrlResult.InvalidAlias ->
+                    call.respond(HttpStatusCode.BadRequest, errorPayload(result.reason))
+                is CreateShortUrlResult.UrlNotAllowed ->
+                    call.respond(HttpStatusCode.BadRequest, errorPayload(result.reason))
+                is CreateShortUrlResult.Failure -> throw result.cause
+            }
         }
 
         route("/{alias}") {
             get {
                 val alias = call.parameters.getOrFail("alias")
-                val destination = orchestrator.resolveAlias(alias)
-                call.respondRedirect(destination, permanent = false)
+                when (val result = orchestrator.resolveAlias(alias)) {
+                    is ResolveAliasResult.Found -> call.respondRedirect(result.destination, permanent = false)
+                    is ResolveAliasResult.NotFound -> call.respond(HttpStatusCode.NotFound, errorPayload("Alias not found"))
+                    is ResolveAliasResult.Failure -> throw result.cause
+                }
             }
 
             delete {
                 val alias = call.parameters.getOrFail("alias")
-                val removed = orchestrator.deleteAlias(alias)
-
-                // use restful status codes
-                if (removed) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                when (val result = orchestrator.deleteAlias(alias)) {
+                    DeleteAliasResult.Deleted -> call.respond(HttpStatusCode.NoContent)
+                    DeleteAliasResult.NotFound -> call.respond(HttpStatusCode.NotFound)
+                    is DeleteAliasResult.Failure -> throw result.cause
                 }
             }
         }
