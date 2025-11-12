@@ -7,6 +7,7 @@ import { Input } from "./ui/input"
 import { useActionState } from "react"
 import { shortenAction } from "@/app/actions"
 import { Spinner } from "./ui/spinner"
+import { IconPlus, IconSend, IconX } from "@tabler/icons-react"
 
 export default function Form() {
     const [state, formAction, pending] = useActionState(shortenAction, undefined)
@@ -24,9 +25,6 @@ export default function Form() {
                     name="fullUrl"
                     required
                 />
-                <FieldDescription>
-                    Must start with <code>https://</code> or <code>http://</code>
-                </FieldDescription>
                 <FieldError>{state?.errors?.properties?.fullUrl?.errors.map((error, index) => (
                     <div key={index}>{error}</div>
                 ))}</FieldError>
@@ -35,22 +33,21 @@ export default function Form() {
             {(hasAlias || !!state?.errors?.properties?.alias) ? (
                 <Field>
                     <FieldLabel>Custom alias</FieldLabel>
+                    <div className="flex flex-row gap-4 align-bottom">
                     <Input
                         placeholder="e.g. mylink123"
                         name="alias"
                     />
-                    <FieldDescription>
-                        3-32 letters or numbers
-                    </FieldDescription>
-
                     <Button
                         type="button"
                         variant="ghost"
                         onClick={() => setHasAlias(false)}
-                        className="text-sm mt-1"
-                    >
-                        Remove alias
-                    </Button>
+                        className="text-sm mt-1 flex-grow-0"
+                    ><IconX /> Remove alias </Button>
+                    </div>
+                    <FieldDescription>
+                        3-32 letters or numbers
+                    </FieldDescription>
                     <FieldError>{state?.errors?.properties?.alias?.errors.map((error, index) => (
                         <div key={index}>{error}</div>
                     ))}</FieldError>
@@ -58,15 +55,15 @@ export default function Form() {
             ) : (
                 <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     onClick={() => setHasAlias(true)}
                 >
-                    + Add alias
+                    <IconPlus /> Add custom alias
                 </Button>
             )}
 
             <Button type="submit" className="w-full" disabled={pending}>
-                {pending ? <Spinner /> : "Shorten URL"}
+                {pending ? <Spinner /> : <><IconSend /> Shorten URL</>}
             </Button>
 
             {state?.shortUrl && (
