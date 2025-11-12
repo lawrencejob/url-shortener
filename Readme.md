@@ -101,7 +101,7 @@ Whatever you use, I suggest that you use Terraform (IaC) and an OpenTelemetry co
 
 ## Drawbacks and further work
 
-With more time, there are a lot of enhancements I would like to provide; I have listed them as follows:
+With more time, there are a lot of enhancements I would like to provide; I have listed them as follows.
 
 ### More unit test coverage
 
@@ -114,3 +114,15 @@ After spending an extraordinary amount of time trying to learn a new language an
 ### Observability
 
 I am a huge advocate for OpenTelemetry and I would have loved to include it. My understanding is that it's trivial to add it to Ktor for collecting spans, so I decided it wasn't worth the time investment of adding instrumentation to the API.
+
+### End to end tests
+
+With more time, I would want to unlock continuous deployments add e2e tests which prove a variety of inputs through the UI to the backend and back.
+
+### Further alterations
+
+The task did not specify the following, but as good practice I would suggest:
+
+1. Adding auth to protect the use of the endpoints, or at least add a 'deletion key' allowing only the creator of a link to disable it in future.
+2. Streaming and paginating the list view. I used a flow pattern in Kotlin to stream the results from Redis - this particular style of lookup is Redis's weakest point, and assuming the potential for many many keys being saved, the API is currently vulnerable to performance issues.
+3. The URL shortener could be enhanced with TTL, analytics, and reusing aliases.
