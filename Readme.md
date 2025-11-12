@@ -38,6 +38,8 @@ The proxy listens on port 80 and routes traffic to the Next.js and Ktor services
 
 I designed the three system layers (frontend -> backend -> database) to scale horizontally and independently. I inferred that a URL shortener could be deployed at enormous scale, serving as the entrypoint to a company's systems. Hence, I looked for a K-V or point-read database rather than a traditional relational database.
 
+![Architecture Diagram](diagram.png)
+
 ### Routing
 
 The original spec requires that the service exposes a SPA frontend and an API on the same host that has a catch-all route at the root. My best approximation for this is a reverse proxy (nginx) configuration as follows:
