@@ -7,7 +7,7 @@ export function CopyNewUrl({ shortUrl }: { shortUrl: string }) {
   const [copiedText, copyToClipboard] = useCopyToClipboard()
 
     return <InputGroup>
-        <InputGroupInput placeholder="https://x.com/shadcn" readOnly />
+        <InputGroupInput value={shortUrl} readOnly />
         <InputGroupAddon align="inline-end">
           <InputGroupButton
             aria-label="Copy"
